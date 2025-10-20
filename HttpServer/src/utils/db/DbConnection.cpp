@@ -17,7 +17,12 @@ DbConnection::DbConnection(const std::string& host,
     , database_(database)
 {
     try 
-    {
+    {   
+        std::cout << "try to connect MySQL" << std::endl;
+        std::cout << "host: " << host << std::endl;
+        std::cout << "user: " << user << std::endl;
+        std::cout << "password: " << password << std::endl;
+        std::cout << "database: " << database << std::endl;
         sql::mysql::MySQL_Driver* driver = sql::mysql::get_mysql_driver_instance();
         conn_.reset(driver->connect(host_, user_, password_));
         if (conn_) 
