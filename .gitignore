@@ -64,3 +64,4 @@ rules.ninja
 Thumbs.db
 docker-compose.yml
 example_muduo
+.clang-format
