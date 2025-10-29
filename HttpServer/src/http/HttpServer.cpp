@@ -56,7 +56,7 @@ void HttpServer::onConnection(const muduo::net::TcpConnectionPtr& conn) {
 
         LOG_INFO << "[onConnection] new connection " << conn->name() << " from "
                  << conn->peerAddress().toIpPort();
-        // TODO: SSL 支持被删除
+        // HACK: SSL 支持被删除
     } else {
         LOG_INFO << "[onConnection] connection " << conn->name() << " closed";
 
