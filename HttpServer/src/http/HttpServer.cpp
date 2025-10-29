@@ -50,50 +50,49 @@ void HttpServer::setSslConfig(const ssl::SslConfig& config) {
 
 void HttpServer::onConnection(const muduo::net::TcpConnectionPtr& conn) {
     if (conn->connected()) {
-        if (useSSL_) {
-            auto sslConn = std::make_unique<ssl::SslConnection>(conn, sslCtx_.get());
-            sslConn->setMessageCallback(std::bind(&HttpServer::onMessage, this,
-                                                  std::placeholders::_1, std::placeholders::_2,
-                                                  std::placeholders::_3));
-            sslConns_[conn] = std::move(sslConn);
-            sslConns_[conn]->startHandshake();
-        }
+        // 给这个新连接挂一个独立的 HttpContext，
+        // 这样 onMessage 里 any_cast 才能拿到真实对象，而不是野指针
         conn->setContext(HttpContext());
+
+        LOG_INFO << "[onConnection] new connection " << conn->name() << " from "
+                 << conn->peerAddress().toIpPort();
+        // TODO: SSL 支持被删除
     } else {
-        if (useSSL_) {
-            sslConns_.erase(conn);
-        }
+        LOG_INFO << "[onConnection] connection " << conn->name() << " closed";
+
+        // 如果以后要做 SSL 连接表清理，可以在这里做:
+        // sslConns_.erase(conn);
     }
 }
 
 void HttpServer::onMessage(const muduo::net::TcpConnectionPtr& conn, muduo::net::Buffer* buf,
                            muduo::Timestamp receiveTime) {
     try {
-        // 这层判断只是代表是否支持ssl
-        if (useSSL_) {
-            LOG_INFO << "onMessage useSSL_ is true";
-            // 1.查找对应的SSL连接
-            auto it = sslConns_.find(conn);
-            if (it != sslConns_.end()) {
-                LOG_INFO << "onMessage sslConns_ is not empty";
-                // 2. SSL连接处理数据
-                it->second->onRead(conn, buf, receiveTime);
+        // // 这层判断只是代表是否支持ssl
+        // if (useSSL_) {
+        //     LOG_INFO << "onMessage useSSL_ is true";
+        //     // 1.查找对应的SSL连接
+        //     auto it = sslConns_.find(conn);
+        //     if (it != sslConns_.end()) {
+        //         LOG_INFO << "onMessage sslConns_ is not empty";
+        //         // 2. SSL连接处理数据
+        //         it->second->onRead(conn, buf, receiveTime);
 
-                // 3. 如果 SSL 握手还未完成，直接返回
-                if (!it->second->isHandshakeCompleted()) {
-                    LOG_INFO << "onMessage sslConns_ is not empty";
-                    return;
-                }
+        //         // 3. 如果 SSL 握手还未完成，直接返回
+        //         if (!it->second->isHandshakeCompleted()) {
+        //             LOG_INFO << "onMessage sslConns_ is not empty";
+        //             return;
+        //         }
 
-                // 4. 从SSL连接的解密缓冲区获取数据
-                muduo::net::Buffer* decryptedBuf = it->second->getDecryptedBuffer();
-                if (decryptedBuf->readableBytes() == 0) return;  // 没有解密后的数据
+        //         // 4. 从SSL连接的解密缓冲区获取数据
+        //         muduo::net::Buffer* decryptedBuf = it->second->getDecryptedBuffer();
+        //         if (decryptedBuf->readableBytes() == 0) return;  // 没有解密后的数据
 
-                // 5. 使用解密后的数据进行HTTP 处理
-                buf = decryptedBuf;  // 将 buf 指向解密后的数据
-                LOG_INFO << "onMessage decryptedBuf is not empty";
-            }
-        }
+        //         // 5. 使用解密后的数据进行HTTP 处理
+        //         buf = decryptedBuf;  // 将 buf 指向解密后的数据
+        //         LOG_INFO << "onMessage decryptedBuf is not empty";
+        //     }
+        // }
         // HttpContext对象用于解析出buf中的请求报文，并把报文的关键信息封装到HttpRequest对象中
         HttpContext* context = boost::any_cast<HttpContext>(conn->getMutableContext());
         if (!context->parseRequest(buf, receiveTime))  // 解析一个http请求
