@@ -10,6 +10,8 @@ TestServer::TestServer(int port, const std::string& name, muduo::net::TcpServer:
 TestServer::~TestServer() {}
 
 void TestServer::initialize() {
+    http::MysqlUtil::init("tcp://127.0.0.1:3306", "root", "123456", "Gomoku", 10);
+    std::cout << mysqlUtil_.executeQuery("SHOW TABLES") << std::endl;
     initializeRouter();  // 初始化路由
 };
 
